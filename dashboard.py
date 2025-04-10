@@ -3,14 +3,32 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-# Load CSV
+import boto3
+import os
+
+# Load AWS credentials from secrets
+aws_id = st.secrets["AWS_ACCESS_KEY_ID"]
+aws_secret = st.secrets["AWS_SECRET_ACCESS_KEY"]
+region = st.secrets["AWS_REGION"]
+bucket = st.secrets["S3_BUCKET"]
+s3_key = st.secrets["S3_KEY"]
+
+# Download the file from S3
+s3 = boto3.client("s3", aws_access_key_id=aws_id, aws_secret_access_key=aws_secret, region_name=region)
+local_file = "btc_prices_data.csv"
+
 try:
-    df = pd.read_csv("btc_prices_data.csv")
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    df = df.sort_values("timestamp")
-except FileNotFoundError:
-    st.error("❌ btc_prices_data.csv not found. Please run ingest.py first.")
+    s3.download_file(bucket, s3_key, local_file)
+    st.success("✅ Loaded latest data from S3")
+except Exception as e:
+    st.error(f"❌ Failed to load data from S3: {e}")
     st.stop()
+
+# Now load the data
+df = pd.read_csv(local_file)
+df['timestamp'] = pd.to_datetime(df['timestamp'])
+df = df.sort_values("timestamp")
+
 
 # App Title
 st.title("🪙 Bitcoin Real-Time Dashboard")
